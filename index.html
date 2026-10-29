@@ -475,6 +475,23 @@ details.pre summary{cursor:pointer;font-weight:600;font-size:14px;min-height:40p
 @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) and (background:color-mix(in srgb,red 50%,transparent)){
   .top{background:color-mix(in srgb,var(--sheet) 76%,transparent);-webkit-backdrop-filter:blur(14px) saturate(1.15);backdrop-filter:blur(14px) saturate(1.15)}
 }
+
+/* ===== v3.3: role × time readable — wider hours, short labels, sticky time row, tap for full name ===== */
+.mx{min-width:calc(184px + var(--hours,10) * 150px)}
+.mx-scroll{max-height:min(80vh,940px);overflow:auto;overscroll-behavior-x:contain}
+.mx-head{position:sticky;top:0;z-index:5;background:var(--sheet);box-shadow:0 1px 0 var(--hair)}
+.mx-head .mx-lab{z-index:6}
+.mx-track .seg{padding:0 5px;font-size:12px;cursor:pointer;text-overflow:clip;display:flex;align-items:center;white-space:normal;word-break:keep-all;line-height:1.12;top:7px;bottom:7px}
+.mx-track .seg.fit1{font-size:10.5px;padding:0 3px}
+.mx-track .seg.fit2{font-size:9.5px;padding:0 2px;letter-spacing:-.02em}
+.mx-track .seg:hover,.mx-track .seg.on{box-shadow:inset 0 0 0 2px var(--red);z-index:3}
+.mx-info{margin-top:10px;font-size:14px;color:var(--muted);min-height:1.5em}
+.mx-info.on{color:var(--ink);font-weight:600}
+@media (max-width:640px){
+  .mx{min-width:calc(104px + var(--hours,10) * 118px)}
+  .mx-scroll{max-height:72vh}
+  .mx-info{font-size:15px}
+}
 </style>
 
 </head>
@@ -595,6 +612,7 @@ details.pre summary{cursor:pointer;font-weight:600;font-size:14px;min-height:40p
     <span id="lg-now"><i class="sw now"></i>지금</span>
   </div>
   <div id="matrix" data-r style="--i:3"></div>
+  <p class="mx-info" id="mx-info" aria-live="polite">막대를 누르면 일정 이름과 시간이 전부 보여요.</p>
   <div class="sec-row"><h2 class="h2">콜시트</h2><button type="button" class="btn-s" id="copy">콜시트 복사</button></div>
   <div class="tbl">
     <table>
@@ -1173,6 +1191,21 @@ function renderCall(R){
   const sm=$('#sheet-m');if(sm._h!==mh){sm.innerHTML=mh;sm._h=mh}
   $('#sheet-pre').textContent=sheetText(R);
 }
+function fitSegs(){
+  document.querySelectorAll('#matrix .seg').forEach(el=>{
+    el.classList.remove('fit1','fit2');
+    if(!el.clientWidth)return;
+    const over=()=>el.scrollWidth>el.clientWidth+1||el.scrollHeight>el.clientHeight+1;
+    if(over()){el.classList.add('fit1');if(over()){el.classList.remove('fit1');el.classList.add('fit2')}}
+  });
+}
+addEventListener('resize',()=>{clearTimeout(fitSegs._t);fitSegs._t=setTimeout(fitSegs,150)});
+function segLabel(lb,c){
+  let s=String(lb||'일정').split(/\s+·\s+|\s*\(/)[0].trim();
+  const role=(c.role||'').trim();
+  if(role&&s.includes(role)){const t=s.replace(role,'').replace(/[\s.·-]+$/,'').trim();if(t)s=t}
+  return s||'일정';
+}
 function renderMatrix(R){
   const box=$('#matrix');const cmp=$('#cmp').checked;$('#lg-ghost').hidden=!cmp;
   if(!R.assigned.length){const h='<p class="hint" style="padding:16px 0">큐시트에 일정을 넣고 사람을 고르면 역할 × 시간 표가 그려져요.</p>';if(box._h!==h){box.innerHTML=h;box._h=h}$('#lg-now').hidden=true;return}
@@ -1194,13 +1227,13 @@ function renderMatrix(R){
     if(p.af!=null||p.at!=null){const a=p.af??t0,b=p.at??t1;if(b>a)s+='<i class="av" style="left:'+L(a)+';width:'+W(a,b)+'" title="가능 '+esc(avail(p.c))+'"></i>'}
     if(p.early)s+='<i class="cf" style="left:'+L(p.call)+';width:'+W(p.call,p.af)+'" title="가능 시간 밖"></i>';
     if(p.late)s+='<i class="cf" style="left:'+L(p.at)+';width:'+W(p.at,p.out)+'" title="가능 시간 밖"></i>';
-    p.mine.forEach(b=>{const lb=b.label||'일정';s+='<i class="seg" style="left:'+L(b.s)+';width:'+W(b.s,b.e)+'" title="'+esc(lb+' '+fmt(b.s)+'–'+fmt(b.e))+'">'+esc(lb)+'</i>'});
+    p.mine.forEach(b=>{const lb=b.label||'일정';const full=lb+' · '+fmt(b.s)+'–'+fmt(b.e)+' · '+disp(p.c);s+='<i class="seg" style="left:'+L(b.s)+';width:'+W(b.s,b.e)+'" title="'+esc(full)+'" data-full="'+esc(full)+'">'+esc(segLabel(lb,p.c))+'</i>'});
     s+='<i class="callmk" style="left:'+L(p.call)+'" title="콜 '+fmt(p.call)+'"></i>';
     if(showNow)s+='<i class="nowline" style="left:'+L(now)+'"></i>';
     rows+='<div class="mx-row"><div class="mx-lab"><span class="t">'+fmt(p.call)+'</span><span class="who">'+esc(disp(p.c))+'</span>'+(mine&&mine.id===p.c.id?'<span class="mine-chip">ME</span>':'')+'</div><div class="mx-track" style="--hours:'+hours+'">'+s+'</div></div>';
   });
-  const h='<div class="mx-scroll" tabindex="0" aria-label="역할 × 시간 표, 옆으로 밀어서 보기"><div class="mx"><div class="mx-head"><div class="mx-lab"><span class="label">Call · role</span></div><div class="mx-track">'+ticks+'</div></div>'+rows+'</div></div>';
-  if(box._h!==h){const sc=box.querySelector('.mx-scroll');const x=sc?sc.scrollLeft:0;box.innerHTML=h;box._h=h;const n=box.querySelector('.mx-scroll');if(n)n.scrollLeft=x}
+  const h='<div class="mx-scroll" tabindex="0" aria-label="역할 × 시간 표, 옆으로 밀어서 보기"><div class="mx" style="--hours:'+hours+'"><div class="mx-head"><div class="mx-lab"><span class="label">Call · role</span></div><div class="mx-track">'+ticks+'</div></div>'+rows+'</div></div>';
+  if(box._h!==h){const sc=box.querySelector('.mx-scroll');const x=sc?sc.scrollLeft:0,y=sc?sc.scrollTop:0;box.innerHTML=h;box._h=h;const n=box.querySelector('.mx-scroll');if(n){n.scrollLeft=x;n.scrollTop=y}requestAnimationFrame(fitSegs)}
 }
 function sheetText(R){
   const sh=S.show||{};const out=[];
@@ -1377,7 +1410,7 @@ $('#gate').addEventListener('click',e=>{if(e.target===e.currentTarget)closeGate(
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#gate').hidden)closeGate()});
 $('#nav-admin').addEventListener('click',()=>{if(S.admin){if(location.hash!=='#admin')location.hash='#admin';else setTab('admin')}else openGate()});
 $('#lock').addEventListener('click',async()=>{flushAll();try{await sb.auth.signOut()}catch(e){}S.admin=false;S.email='';S.codes={};location.hash='#notice';toast('로그아웃했어요.')});
-window.addEventListener('hashchange',route);
+window.addEventListener('hashchange',()=>{route();setTimeout(fitSegs,60)});
 
 /* ---------- events: NOTICE ---------- */
 $('#bm-notice').addEventListener('click',()=>{S.bubble='notice';lastSpoken='';render()});
@@ -1417,6 +1450,8 @@ meBox.addEventListener('change',e=>{
 
 /* ---------- events: CALL / CHECK-IN ---------- */
 $('#cmp').addEventListener('change',()=>{$('#matrix')._h='';render()});
+$('#matrix').addEventListener('click',e=>{const sg=e.target.closest('.seg');const info=$('#mx-info');if(!sg||!info)return;
+  $$('#matrix .seg.on').forEach(x=>x.classList.remove('on'));sg.classList.add('on');info.textContent=sg.dataset.full||sg.title||'';info.classList.add('on')});
 $('#copy').addEventListener('click',()=>{
   const pre=$('#sheet-pre');const txt=pre.textContent;
   const fallback=()=>{try{$('#pre-box').open=true;const r=document.createRange();r.selectNodeContents(pre);const s=getSelection();s.removeAllRanges();s.addRange(r);toast('글을 선택했어요. 복사해서 단톡방에 붙여 넣으세요.')}catch(err){$('#pre-box').open=true}};
