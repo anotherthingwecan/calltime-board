@@ -492,6 +492,22 @@ details.pre summary{cursor:pointer;font-weight:600;font-size:14px;min-height:40p
   .mx-scroll{max-height:72vh}
   .mx-info{font-size:15px}
 }
+.t-split{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;margin-top:12px;padding-top:10px;border-top:1px dashed var(--hair)}
+.t-split b{font-family:var(--serif);font-size:34px;font-weight:400;letter-spacing:-.03em;line-height:1}
+.t-split span:last-child{flex-basis:100%;font-size:14px;color:var(--muted)}
+.b-mid{background:var(--paper);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.sw.away{height:0;border-top:2px dotted var(--ink);border-radius:0}
+.mx-track .away{top:50%;height:0;border-top:2px dotted var(--ink);font-style:normal;cursor:pointer}
+.mx-track .away b{position:absolute;left:50%;top:0;transform:translate(-50%,-50%);background:var(--sheet);padding:1px 6px;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--muted);white-space:nowrap}
+.mx-track .away:hover b,.mx-track .away.on b{color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--red)}
+.mx-track .callmk.c2{background:repeating-linear-gradient(var(--ink) 0 4px,transparent 4px 7px)}
+.mx-lab .t small{font-size:.8em;color:var(--muted);font-weight:400}
+.chip.away{background:var(--paper);color:var(--ink);outline:1.5px dotted var(--ink);outline-offset:-1.5px}
+.crow .cst-wrap{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center}
+.crow .cst-wrap .cst{flex:1 1 300px}
+.crow .nsp{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;min-height:32px;cursor:pointer;white-space:nowrap}
+.crow .nsp input{width:16px;height:16px;min-height:0;padding:0;border:0;background:none;accent-color:var(--ink)}
+@media (max-width:640px){.t-split b{font-size:26px}.t-split span:last-child{font-size:15px}.crow .nsp{font-size:14px}}
 </style>
 
 </head>
@@ -606,6 +622,7 @@ details.pre summary{cursor:pointer;font-weight:600;font-size:14px;min-height:40p
     <span><i class="sw seg"></i>일정</span>
     <span><i class="sw buf"></i>콜 버퍼</span>
     <span><i class="sw stay"></i>현장 대기</span>
+    <span id="lg-away" hidden><i class="sw away"></i>외출 (분할 콜)</span>
     <span id="lg-ghost"><i class="sw ghost"></i>일괄 콜이면 더 기다릴 시간</span>
     <span><i class="sw av"></i>가능 시간</span>
     <span><i class="sw cf"></i>가능 시간 밖</span>
@@ -663,6 +680,12 @@ details.pre summary{cursor:pointer;font-weight:600;font-size:14px;min-height:40p
       <label class="fld" for="a-venue"><span class="label">Venue</span><input id="a-venue" type="text" placeholder="예: 학교 소극장" autocomplete="off"></label>
       <label class="fld" for="a-buf"><span class="label">Call buffer</span>
         <select id="a-buf"><option value="0">0분 전</option><option value="10">10분 전</option><option value="15">15분 전</option><option value="20">20분 전</option><option value="30">30분 전</option><option value="45">45분 전</option><option value="60">60분 전</option></select>
+      </label>
+      <label class="fld" for="a-split"><span class="label">Split call — 외출</span>
+        <select id="a-split"><option value="0">쓰지 않음</option><option value="60">일정 사이 1시간 이상 비면</option><option value="90">1시간 30분 이상 비면</option><option value="120">2시간 이상 비면</option><option value="180">3시간 이상 비면</option></select>
+      </label>
+      <label class="fld" for="a-ret"><span class="label">Return — 재집합</span>
+        <select id="a-ret"><option value="0">다음 일정 시작 시각</option><option value="15">다음 일정 15분 전</option><option value="20">20분 전</option><option value="30">30분 전</option><option value="45">45분 전</option><option value="60">60분 전</option></select>
       </label>
     </div>
   </section>
@@ -781,12 +804,12 @@ function genCode(){const a=new Uint32Array(6);crypto.getRandomValues(a);return A
 const live=()=>S.mode==='live';
 
 /* ---------- rows <-> app ---------- */
-function fromShow(r){return r?{title:r.title||'',date:r.show_date||'',venue:r.venue||'',buffer:r.buffer,notice:r.notice||'',noticeAt:r.notice_at,pdfId:r.pdf_path||null,pdfName:r.pdf_name||'',pdfSize:r.pdf_size||0,pdfAt:r.pdf_at,example:!!r.example}:null}
-function fromCrew(r){return {id:r.id,role:r.role||'',name:r.name||'',group:r.team||'스태프',availFrom:r.avail_from||'',availTo:r.avail_to||'',order:r.sort,selfName:r.self_name,selfFrom:r.self_from,selfTo:r.self_to,selfAt:r.self_at}}
+function fromShow(r){return r?{title:r.title||'',date:r.show_date||'',venue:r.venue||'',buffer:r.buffer,splitGap:r.split_gap,returnBuf:r.return_buf,notice:r.notice||'',noticeAt:r.notice_at,pdfId:r.pdf_path||null,pdfName:r.pdf_name||'',pdfSize:r.pdf_size||0,pdfAt:r.pdf_at,example:!!r.example}:null}
+function fromCrew(r){return {id:r.id,role:r.role||'',name:r.name||'',group:r.team||'스태프',availFrom:r.avail_from||'',availTo:r.avail_to||'',order:r.sort,selfName:r.self_name,selfFrom:r.self_from,selfTo:r.self_to,selfAt:r.self_at,noSplit:!!r.no_split}}
 function fromBlock(r){return {id:r.id,label:r.label||'',start:r.start_t||'',end:r.end_t||'',crew:Array.isArray(r.crew)?r.crew.slice():[],order:r.sort}}
 const MAP={
-  show:{title:'title',date:'show_date',venue:'venue',buffer:'buffer',notice:'notice',noticeAt:'notice_at',pdfId:'pdf_path',pdfName:'pdf_name',pdfSize:'pdf_size',pdfAt:'pdf_at',example:'example'},
-  crew:{role:'role',name:'name',group:'team',availFrom:'avail_from',availTo:'avail_to',order:'sort',selfName:'self_name',selfFrom:'self_from',selfTo:'self_to',selfAt:'self_at'},
+  show:{title:'title',date:'show_date',venue:'venue',buffer:'buffer',splitGap:'split_gap',returnBuf:'return_buf',notice:'notice',noticeAt:'notice_at',pdfId:'pdf_path',pdfName:'pdf_name',pdfSize:'pdf_size',pdfAt:'pdf_at',example:'example'},
+  crew:{role:'role',name:'name',group:'team',availFrom:'avail_from',availTo:'avail_to',order:'sort',selfName:'self_name',selfFrom:'self_from',selfTo:'self_to',selfAt:'self_at',noSplit:'no_split'},
   blocks:{label:'label',start:'start_t',end:'end_t',crew:'crew',order:'sort'}
 };
 function toDb(t,o){const m=MAP[t],r={};Object.keys(o).forEach(k=>{if(m[k])r[m[k]]=o[k]});return r}
@@ -811,6 +834,8 @@ function outside(c,s,e){const af=toMin(c.availFrom),at=toMin(c.availTo);return (
 function compute(){
   const sh=S.show||{};
   const buf=Number.isFinite(+sh.buffer)?+sh.buffer:15;
+  const splitGap=Number.isFinite(+sh.splitGap)?+sh.splitGap:90;
+  const retBuf=Number.isFinite(+sh.returnBuf)?+sh.returnBuf:30;
   const valid=[];
   S.blocks.forEach(b=>{const s=toMin(b.start),e=toMin(b.end);if(s!=null&&e!=null&&e>s)valid.push({id:b.id,label:b.label||'',crew:Array.isArray(b.crew)?b.crew:[],s,e})});
   valid.sort((a,b)=>a.s-b.s||a.e-b.e);
@@ -821,9 +846,17 @@ function compute(){
     const p={c,mine,call:null,af,at,early:0,late:0};
     if(mine.length){
       p.first=mine[0];p.call=mine[0].s-buf;p.out=Math.max(...mine.map(b=>b.e));
-      let busy=0,cs=null,ce=null;
-      mine.forEach(b=>{if(cs===null){cs=b.s;ce=b.e}else if(b.s<=ce){ce=Math.max(ce,b.e)}else{busy+=ce-cs;cs=b.s;ce=b.e}});
-      busy+=ce-cs;p.busy=busy;p.wait=(p.out-p.call)-busy;
+      const iv=[];
+      mine.forEach(b=>{const l=iv[iv.length-1];if(l&&b.s<=l.e)l.e=Math.max(l.e,b.e);else iv.push({s:b.s,e:b.e})});
+      const busy=sum(iv.map(x=>x.e-x.s));p.busy=busy;p.waitOne=(p.out-p.call)-busy;p.wait=p.waitOne;p.split=null;
+      /* 분할 콜: 일정 사이가 splitGap분 이상 비면 나갔다가 다음 일정 retBuf분 전에 다시 와요 */
+      if(splitGap>0&&!c.noSplit&&iv.length>1){
+        let bi=-1,bg=0;for(let i=0;i<iv.length-1;i++){const g=iv[i+1].s-iv[i].e;if(g>bg){bg=g;bi=i}}
+        if(bi>=0&&bg>=splitGap&&bg>retBuf){
+          const ret=iv[bi+1].s;p.split={leave:iv[bi].e,back:ret-retBuf,ret,next:mine.find(b=>b.s>=ret)||mine[mine.length-1]};
+          p.free=p.split.back-p.split.leave;p.wait=p.waitOne-p.free;
+        }
+      }
       if(af!=null&&p.call<af)p.early=af-p.call;
       if(at!=null&&p.out>at)p.late=p.out-at;
     }
@@ -836,7 +869,8 @@ function compute(){
   assigned.forEach(p=>{p.waitAll=(gEnd-gCall)-p.busy});
   assigned.sort((a,b)=>a.call-b.call||a.out-b.out);
   return {buf,valid,people,byId,assigned,unassigned,gCall,gEnd,
-    waitStag:sum(assigned.map(p=>p.wait)),waitAll:sum(assigned.map(p=>p.waitAll)),
+    splitGap,retBuf,splits:assigned.filter(p=>p.split),
+    waitStag:sum(assigned.map(p=>p.wait)),waitOne:sum(assigned.map(p=>p.waitOne)),waitAll:sum(assigned.map(p=>p.waitAll)),
     conflicts:assigned.filter(p=>p.early||p.late)};
 }
 function conflictText(p){
@@ -861,7 +895,7 @@ async function loadAll(){
     S.show=fromShow(res[0].data);
     S.crewRaw=(res[1].data||[]).map(fromCrew);
     S.blocks=(res[2].data||[]).map(fromBlock);
-    const ck={};(res[3].data||[]).forEach(r=>{ck[r.crew_id]={at:r.at_min,by:r.by_who}});S.checkins=ck;
+    const ck={};(res[3].data||[]).forEach(r=>{ck[ckKey(r.crew_id,r.round)]={at:r.at_min,by:r.by_who}});S.checkins=ck;
     const codes={};if(S.admin&&res[4])(res[4].data||[]).forEach(r=>{codes[r.crew_id]=r.code});S.codes=codes;
     applyPending();merge();
     if(S.myId&&!S.crewRaw.some(c=>c.id===S.myId))forgetCode(true);
@@ -873,6 +907,11 @@ async function loadAll(){
   }finally{loadBusy=false;if(loadAgain){loadAgain=false;reloadSoon(120)}}
 }
 
+/* 체크인 키: 1차 도착은 crew_id, 2차 복귀는 crew_id#2 */
+function ckKey(id,r){return +r===2?id+'#2':id}
+function ckRow(k,v){const [id,r]=String(k).split('#');return {crew_id:id,round:r==='2'?2:1,at_min:v.at,by_who:v.by||'pd'}}
+function ckRows(o){return Object.keys(o).map(k=>ckRow(k,o[k]))}
+function splitText(p){return p.split?fmt(p.split.leave)+'–'+fmt(p.split.back)+' 외출 · '+fmt(p.split.back)+' 재집합':''}
 /* ---------- writes ---------- */
 async function q(p){const r=await p;if(r.error)throw r.error;return r.data}
 async function qRows(p){const d=await q(p);if(!d||!d.length)throw {code:'42501',message:'no rows (permission)'};return d}
@@ -1020,7 +1059,8 @@ function renderTicket(R){
   else if(!mine){h+='<p class="t-time">?</p><p class="t-who">아직 누군지 몰라요</p><p class="t-sub">내 코드를 넣으면 콜이 여기 찍혀요.</p>'}
   else if(!p||p.call==null){h+='<p class="t-time">—</p><p class="t-who">'+esc(disp(mine))+'</p><p class="t-sub">오늘은 콜이 없어요. 안 와도 돼요.</p>'}
   else{
-    h+='<p class="t-time">'+fmt(p.call)+'</p><p class="t-who">'+esc(disp(mine))+'</p><p class="t-sub">'+esc(p.first.label||'일정')+'부터 · '+fmt(p.out)+' 퇴근 · 대기 '+dur(p.wait)+'</p>';
+    h+='<p class="t-time">'+fmt(p.call)+'</p><p class="t-who">'+esc(disp(mine))+'</p><p class="t-sub">'+esc(p.first.label||'일정')+'부터 · '+fmt(p.out)+' 퇴근 · 현장 대기 '+dur(p.wait)+'</p>';
+    if(p.split)h+='<p class="t-split"><span class="label">2nd call</span><b>'+fmt(p.split.back)+'</b><span>'+fmt(p.split.leave)+'에 나갔다가 '+esc(segLabel(p.split.next.label,p.c))+' '+(R.retBuf?R.retBuf+'분 전':'시작 시각')+'에 다시 와요 · 외출 '+dur(p.free)+'</span></p>';
     if(p.early||p.late)h+='<p class="t-warn">'+esc(conflictText(p))+'. PD 화면에도 표시돼요.</p>';
   }
   h+='<div class="perf" aria-hidden="true"></div><div class="t-foot"><span class="label">'+(R.buf?'Buffer '+R.buf+' min':'Call = first cue')+'</span><span class="label">'+esc(date||'Call time board')+'</span></div>';
@@ -1071,6 +1111,7 @@ function renderToday(R){
     items.push(['Last out',fmt(R.gEnd),'']);
     items.push(['On call',R.assigned.length+' / '+S.crew.length,R.unassigned.length?'콜 없음 '+R.unassigned.length+'명':'전원 콜']);
     items.push(['Wait saved',(Math.round(saved/6)/10)+'h',pct+'% 줄었어요']);
+    if(R.splits.length)items.push(['Split call',R.splits.length+'명','중간에 나갔다 다시 와요']);
     if(R.conflicts.length)items.push(['Conflicts',String(R.conflicts.length),'가능 시간과 안 맞는 사람']);
   }
   const h=items.map((it,i)=>'<li style="--i:'+i+'"><span class="label">'+esc(it[0])+'</span><span class="v">'+esc(it[1])+'</span>'+(it[2]?'<span class="s">'+esc(it[2])+'</span>':'')+'</li>').join('');
@@ -1167,26 +1208,27 @@ function emptyHTML(t,s){return '<li class="empty"><div class="fig-s" aria-hidden
 
 /* ---------- CALL ---------- */
 function renderCall(R){
-  $('#call-lead').innerHTML='콜 = <b>'+(R.buf?'첫 일정 '+R.buf+'분 전':'첫 일정 시작 시각')+'</b>. 마지막 일정이 끝나면 퇴근이에요.';
+  $('#call-lead').innerHTML='콜 = <b>'+(R.buf?'첫 일정 '+R.buf+'분 전':'첫 일정 시작 시각')+'</b>. 마지막 일정이 끝나면 퇴근이에요.'+(R.splitGap>0?' 일정 사이가 <b>'+dur(R.splitGap)+' 이상</b> 비면 나갔다가 다음 일정 <b>'+(R.retBuf?R.retBuf+'분 전':'시작 시각')+'</b>에 다시 와요(분할 콜).':'');
   const key=$('#key');let kh;
   if(!R.assigned.length){kh='<div><p class="label">Wait time saved</p><p class="key-num">—</p><p class="hint">큐시트에 일정과 사람을 넣으면 계산돼요.</p></div><div></div>'}
   else{
     const saved=R.waitAll-R.waitStag;const pct=R.waitAll?Math.round(saved/R.waitAll*100):0;const big=String(Math.round(saved/6)/10);
     const w=R.waitAll?Math.max(2,Math.round(R.waitStag/R.waitAll*100)):0;
-    kh='<div><p class="label">Wait time saved</p><p class="key-num">'+big+'<small>시간</small></p><p class="hint">모두 '+fmt(R.gCall)+' 집합이면 대기 '+dur(R.waitAll)+' → 시차 콜 '+dur(R.waitStag)+' ('+pct+'%↓)</p></div>'+
-      '<div class="bars"><div class="bar"><span class="label">All at '+fmt(R.gCall)+'</span><i class="b-all" style="width:100%"></i><b>'+durS(R.waitAll)+'</b></div><div class="bar"><span class="label">Staggered</span><i class="b-st" style="width:'+w+'%"></i><b>'+durS(R.waitStag)+'</b></div>'+(R.conflicts.length?'<p class="msg err">가능 시간과 안 맞는 사람 '+R.conflicts.length+'명 · '+esc(R.conflicts.map(p=>disp(p.c)).join(', '))+'</p>':'')+'</div>';
+    const sp=R.splits.length>0;const w1=R.waitAll?Math.max(2,Math.round(R.waitOne/R.waitAll*100)):0;
+    kh='<div><p class="label">Wait time saved</p><p class="key-num">'+big+'<small>시간</small></p><p class="hint">모두 '+fmt(R.gCall)+' 집합이면 대기 '+dur(R.waitAll)+' → 시차 콜 '+dur(R.waitOne)+(sp?' → 분할 콜 '+dur(R.waitStag):'')+' ('+pct+'%↓)</p></div>'+
+      '<div class="bars"><div class="bar"><span class="label">All at '+fmt(R.gCall)+'</span><i class="b-all" style="width:100%"></i><b>'+durS(R.waitAll)+'</b></div>'+(sp?'<div class="bar"><span class="label">Staggered</span><i class="b-mid" style="width:'+w1+'%"></i><b>'+durS(R.waitOne)+'</b></div><div class="bar"><span class="label">+ Split '+R.splits.length+'</span><i class="b-st" style="width:'+w+'%"></i><b>'+durS(R.waitStag)+'</b></div>':'<div class="bar"><span class="label">Staggered</span><i class="b-st" style="width:'+w+'%"></i><b>'+durS(R.waitStag)+'</b></div>')+(R.conflicts.length?'<p class="msg err">가능 시간과 안 맞는 사람 '+R.conflicts.length+'명 · '+esc(R.conflicts.map(p=>disp(p.c)).join(', '))+'</p>':'')+'</div>';
   }
   if(key._h!==kh){key.innerHTML=kh;key._h=kh}
   renderMatrix(R);
   const mine=myCrew();
   const tb=$('#sheet-body');let th;
   if(!R.assigned.length)th='<tr class="off"><td colspan="6">아직 콜이 없어요. 큐시트에서 일정마다 사람을 골라야 해요.</td></tr>';
-  else th=R.assigned.map(p=>'<tr'+(mine&&mine.id===p.c.id?' class="mine"':'')+'><td class="t">'+fmt(p.call)+'</td><td><b>'+esc(disp(p.c))+'</b><span class="sub">'+esc(p.c.group||'')+'</span></td><td>'+esc(p.first.label||'일정')+'<span class="sub">'+fmt(p.first.s)+' 시작</span></td><td class="t">'+fmt(p.out)+'</td><td>'+dur(p.busy)+' / <span class="'+(p.wait>=120?'hi':'')+'">대기 '+dur(p.wait)+'</span></td><td class="mono'+((p.early||p.late)?' hi':'')+'">'+esc(avail(p.c)||'—')+((p.early||p.late)?'<span class="sub hi">'+esc(conflictText(p))+'</span>':'')+'</td></tr>').join('')
+  else th=R.assigned.map(p=>'<tr'+(mine&&mine.id===p.c.id?' class="mine"':'')+'><td class="t">'+fmt(p.call)+(p.split?'<span class="sub">2차 '+fmt(p.split.back)+'</span>':'')+'</td><td><b>'+esc(disp(p.c))+'</b><span class="sub">'+esc(p.c.group||'')+'</span></td><td>'+esc(p.first.label||'일정')+'<span class="sub">'+fmt(p.first.s)+' 시작</span></td><td class="t">'+fmt(p.out)+'</td><td>'+dur(p.busy)+' / <span class="'+(p.wait>=120?'hi':'')+'">대기 '+dur(p.wait)+'</span>'+(p.split?'<span class="sub">외출 '+fmt(p.split.leave)+'–'+fmt(p.split.back)+' ('+dur(p.free)+')</span>':'')+'</td><td class="mono'+((p.early||p.late)?' hi':'')+'">'+esc(avail(p.c)||'—')+((p.early||p.late)?'<span class="sub hi">'+esc(conflictText(p))+'</span>':'')+'</td></tr>').join('')
     +(R.unassigned.length?'<tr class="off"><td class="t">—</td><td colspan="5">오늘 콜 없음 · '+R.unassigned.map(p=>esc(disp(p.c))).join(', ')+'</td></tr>':'');
   if(tb._h!==th){tb.innerHTML=th;tb._h=th}
   let mh;
   if(!R.assigned.length)mh='<li class="mrow"><span class="mr-sub">아직 콜이 없어요. 큐시트에서 일정마다 사람을 골라야 해요.</span></li>';
-  else mh=R.assigned.map(p=>'<li class="mrow call'+(mine&&mine.id===p.c.id?' mine':'')+'"><span class="mr-time">'+fmt(p.call)+'</span><div class="mr-main"><b>'+esc(disp(p.c))+'</b></div><p class="mr-sub">'+esc(p.first.label||'일정')+'부터 · '+fmt(p.out)+' 퇴근</p><p class="mr-sub">일 '+dur(p.busy)+' · <span class="'+(p.wait>=120?'hi':'')+'">대기 '+dur(p.wait)+'</span></p>'+((p.early||p.late)?'<p class="mr-sub hi">'+esc(conflictText(p))+'</p>':'')+'</li>').join('')
+  else mh=R.assigned.map(p=>'<li class="mrow call'+(mine&&mine.id===p.c.id?' mine':'')+'"><span class="mr-time">'+fmt(p.call)+'</span><div class="mr-main"><b>'+esc(disp(p.c))+'</b></div><p class="mr-sub">'+esc(p.first.label||'일정')+'부터 · '+fmt(p.out)+' 퇴근</p><p class="mr-sub">일 '+dur(p.busy)+' · <span class="'+(p.wait>=120?'hi':'')+'">대기 '+dur(p.wait)+'</span></p>'+(p.split?'<p class="mr-sub">'+splitText(p)+' · 외출 '+dur(p.free)+'</p>':'')+((p.early||p.late)?'<p class="mr-sub hi">'+esc(conflictText(p))+'</p>':'')+'</li>').join('')
     +(R.unassigned.length?'<li class="mrow call"><span class="mr-time">—</span><p class="mr-sub" style="grid-row:1">오늘 콜 없음 · '+R.unassigned.map(p=>esc(disp(p.c))).join(', ')+'</p></li>':'');
   const sm=$('#sheet-m');if(sm._h!==mh){sm.innerHTML=mh;sm._h=mh}
   $('#sheet-pre').textContent=sheetText(R);
@@ -1207,7 +1249,7 @@ function segLabel(lb,c){
   return s||'일정';
 }
 function renderMatrix(R){
-  const box=$('#matrix');const cmp=$('#cmp').checked;$('#lg-ghost').hidden=!cmp;
+  const box=$('#matrix');const cmp=$('#cmp').checked;$('#lg-ghost').hidden=!cmp;$('#lg-away').hidden=!R.splits.length;
   if(!R.assigned.length){const h='<p class="hint" style="padding:16px 0">큐시트에 일정을 넣고 사람을 고르면 역할 × 시간 표가 그려져요.</p>';if(box._h!==h){box.innerHTML=h;box._h=h}$('#lg-now').hidden=true;return}
   let t0=Math.floor(R.gCall/60)*60,t1=Math.ceil(R.gEnd/60)*60;
   R.assigned.forEach(p=>{if(p.af!=null)t0=Math.min(t0,Math.floor(p.af/60)*60);if(p.at!=null)t1=Math.max(t1,Math.ceil(p.at/60)*60)});
@@ -1222,13 +1264,18 @@ function renderMatrix(R){
   R.assigned.forEach(p=>{
     let s='';
     if(cmp){if(p.call>R.gCall)s+='<i class="ghost" style="left:'+L(R.gCall)+';width:'+W(R.gCall,p.call)+'"></i>';if(p.out<R.gEnd)s+='<i class="ghost" style="left:'+L(p.out)+';width:'+W(p.out,R.gEnd)+'"></i>'}
-    s+='<i class="stay" style="left:'+L(p.call)+';width:'+W(p.call,p.out)+'"></i>';
+    if(p.split){const x=p.split;
+      s+='<i class="stay" style="left:'+L(p.call)+';width:'+W(p.call,x.leave)+'"></i><i class="stay" style="left:'+L(x.back)+';width:'+W(x.back,p.out)+'"></i>';
+      s+='<i class="away" style="left:'+L(x.leave)+';width:'+W(x.leave,x.back)+'" title="외출 '+fmt(x.leave)+'–'+fmt(x.back)+'" data-full="외출 '+fmt(x.leave)+'–'+fmt(x.back)+' · '+dur(p.free)+' · '+fmt(x.back)+' 재집합 · '+esc(disp(p.c))+'"><b>외출 '+durS(p.free)+'</b></i>';
+      if(x.ret>x.back)s+='<i class="buf" style="left:'+L(x.back)+';width:'+W(x.back,x.ret)+'"></i>';
+    }else s+='<i class="stay" style="left:'+L(p.call)+';width:'+W(p.call,p.out)+'"></i>';
     s+='<i class="buf" style="left:'+L(p.call)+';width:'+W(p.call,p.first.s)+'"></i>';
     if(p.af!=null||p.at!=null){const a=p.af??t0,b=p.at??t1;if(b>a)s+='<i class="av" style="left:'+L(a)+';width:'+W(a,b)+'" title="가능 '+esc(avail(p.c))+'"></i>'}
     if(p.early)s+='<i class="cf" style="left:'+L(p.call)+';width:'+W(p.call,p.af)+'" title="가능 시간 밖"></i>';
     if(p.late)s+='<i class="cf" style="left:'+L(p.at)+';width:'+W(p.at,p.out)+'" title="가능 시간 밖"></i>';
     p.mine.forEach(b=>{const lb=b.label||'일정';const full=lb+' · '+fmt(b.s)+'–'+fmt(b.e)+' · '+disp(p.c);s+='<i class="seg" style="left:'+L(b.s)+';width:'+W(b.s,b.e)+'" title="'+esc(full)+'" data-full="'+esc(full)+'">'+esc(segLabel(lb,p.c))+'</i>'});
     s+='<i class="callmk" style="left:'+L(p.call)+'" title="콜 '+fmt(p.call)+'"></i>';
+    if(p.split)s+='<i class="callmk c2" style="left:'+L(p.split.back)+'" title="2차 콜 '+fmt(p.split.back)+'"></i>';
     if(showNow)s+='<i class="nowline" style="left:'+L(now)+'"></i>';
     rows+='<div class="mx-row"><div class="mx-lab"><span class="t">'+fmt(p.call)+'</span><span class="who">'+esc(disp(p.c))+'</span>'+(mine&&mine.id===p.c.id?'<span class="mine-chip">ME</span>':'')+'</div><div class="mx-track" style="--hours:'+hours+'">'+s+'</div></div>';
   });
@@ -1239,9 +1286,11 @@ function sheetText(R){
   const sh=S.show||{};const out=[];
   out.push('['+((sh.title||'').trim()||'공연')+' · 콜시트]');
   const line=[fmtDate(sh.date),(sh.venue||'').trim()].filter(Boolean).join(' · ');if(line)out.push(line);
-  out.push(R.buf?'※ 콜 = 첫 일정 '+R.buf+'분 전 도착':'※ 콜 = 첫 일정 시작 시각에 도착');out.push('');
+  out.push(R.buf?'※ 콜 = 첫 일정 '+R.buf+'분 전 도착':'※ 콜 = 첫 일정 시작 시각에 도착');
+  if(R.splits.length)out.push('※ 일정 사이가 '+dur(R.splitGap)+' 이상 비면 외출 → 다음 일정 '+(R.retBuf?R.retBuf+'분 전':'시작 시각')+' 재집합');
+  out.push('');
   if(!R.assigned.length)out.push('아직 콜이 없어요.');
-  R.assigned.forEach(p=>out.push(fmt(p.call)+'  '+disp(p.c)+' — '+(p.first.label||'일정')+'부터 · '+fmt(p.out)+' 퇴근'));
+  R.assigned.forEach(p=>out.push(fmt(p.call)+'  '+disp(p.c)+' — '+(p.first.label||'일정')+'부터 · '+(p.split?fmt(p.split.leave)+' 외출 → '+fmt(p.split.back)+' 재집합 · ':'')+fmt(p.out)+' 퇴근'));
   if(R.unassigned.length){out.push('');out.push('오늘 콜 없음: '+R.unassigned.map(p=>disp(p.c)).join(', '))}
   if(R.valid.length){out.push('');out.push('[큐시트]');R.valid.forEach(b=>{const who=b.crew.map(id=>S.crew.find(c=>c.id===id)).filter(Boolean).map(c=>(c.role||'').trim()||'역할 미정');out.push(fmt(b.s)+'–'+fmt(b.e)+' '+(b.label||'일정')+(who.length?' ('+who.join(', ')+')':''))})}
   out.push('');out.push('내 콜 확인 · 가능 시간 수정: '+location.origin+location.pathname);
@@ -1252,23 +1301,30 @@ function sheetText(R){
 function renderCheck(R){
   const now=nowMin();setVal($('#now-in'),fmt(now));
   $('#now-mode').textContent=S.now?'Now — set by you':'Now — real time';$('#now-real').hidden=!S.now;
-  const mine=myCrew();let cd=0,cp=0,cb=0;
+  const mine=myCrew();let cd=0,cp=0,ca=0,cb=0;
   const rows=R.assigned.map(p=>{
-    const ck=S.checkins[p.c.id];const at=ck?ck.at:null;let st,txt;
-    if(ck){st='done';cd++;const late=at-p.call;txt='도착 '+fmt(at)+(late>0?' · '+late+'분 늦음':'')}
+    const c1=S.checkins[p.c.id],c2=S.checkins[p.c.id+'#2'],x=p.split;let st,txt,round=1;
+    if(x&&c1&&(now>=x.leave||c2)){
+      round=2;
+      if(c2){st='done';cd++;const late=c2.at-x.back;txt='복귀 '+fmt(c2.at)+(late>0?' · '+late+'분 늦음':'')}
+      else if(now>x.back){st='blocked';cb++;txt='미복귀 · '+dur(now-x.back)+' 지남'}
+      else{st='away';ca++;const d=x.back-now;txt='외출 중 · '+(d===0?'지금 재집합':dur(d)+' 뒤 재집합')}
+    }
+    else if(c1){st='done';cd++;const late=c1.at-p.call;txt='도착 '+fmt(c1.at)+(late>0?' · '+late+'분 늦음':'')}
     else if(now>p.call){st='blocked';cb++;txt='미도착 · '+dur(now-p.call)+' 지남'}
     else{st='pending';cp++;const d=p.call-now;txt=d===0?'지금 콜':dur(d)+' 뒤 콜'}
+    const ck=round===2?c2:c1;const lab=round===2?'복귀':'도착';
     const isMe=mine&&mine.id===p.c.id;const can=S.admin||isMe;
-    const btn=can?(ck?'<button type="button" class="ck-btn undo" data-id="'+esc(p.c.id)+'">도착 취소</button>':'<button type="button" class="ck-btn" data-id="'+esc(p.c.id)+'">도착 체크</button>'):'<span class="ck-none" aria-hidden="true"></span>';
-    return '<li class="ck'+(isMe?' mine':'')+'"><div class="ck-time">'+fmt(p.call)+'<small>CALL</small></div><div class="ck-who"><b>'+esc(disp(p.c))+(isMe?' <span class="mine-chip">ME</span>':'')+'</b><span>'+esc(p.first.label||'일정')+'부터 · '+fmt(p.out)+' 퇴근</span></div><span class="chip '+st+'">'+esc(txt)+'</span>'+btn+'</li>';
+    const btn=can?'<button type="button" class="ck-btn'+(ck?' undo':'')+'" data-id="'+esc(p.c.id)+'" data-r="'+round+'">'+lab+(ck?' 취소':' 체크')+'</button>':'<span class="ck-none" aria-hidden="true"></span>';
+    return '<li class="ck'+(isMe?' mine':'')+'"><div class="ck-time">'+fmt(round===2?x.back:p.call)+'<small>'+(round===2?'2ND CALL':'CALL')+'</small></div><div class="ck-who"><b>'+esc(disp(p.c))+(isMe?' <span class="mine-chip">ME</span>':'')+'</b><span>'+esc(p.first.label||'일정')+'부터 · '+(x?splitText(p)+' · ':'')+fmt(p.out)+' 퇴근</span></div><span class="chip '+st+'">'+esc(txt)+'</span>'+btn+'</li>';
   }).join('');
   const lh=!live()?'<li class="ck"><div class="ck-time">··:··</div><div class="ck-who"><b>'+(S.mode==='error'?'연결이 안 돼요':'불러오는 중이에요')+'</b></div></li>':(rows||emptyHTML('콜이 잡힌 사람이 없어요.','PD가 큐시트에서 일정마다 사람을 고르면 여기서 도착을 체크해요.'));
   const el=$('#ck-list');if(el._h!==lh){el.innerHTML=lh;el._h=lh}
   const n=R.assigned.length||1;
-  const sh=R.assigned.length?'<div class="ck-sum"><span class="n"><span class="chip done">도착</span><b>'+cd+'</b></span><span class="n"><span class="chip pending">콜 전</span><b>'+cp+'</b></span><span class="n"><span class="chip blocked">미도착</span><b>'+cb+'</b></span></div><div class="stack" aria-hidden="true"><i style="width:'+(cd/n*100)+'%;background:var(--ink)"></i><i style="width:'+(cb/n*100)+'%;background:var(--red)"></i></div>':'';
+  const sh=R.assigned.length?'<div class="ck-sum"><span class="n"><span class="chip done">도착</span><b>'+cd+'</b></span><span class="n"><span class="chip pending">콜 전</span><b>'+cp+'</b></span>'+(R.splits.length?'<span class="n"><span class="chip away">외출</span><b>'+ca+'</b></span>':'')+'<span class="n"><span class="chip blocked">미도착</span><b>'+cb+'</b></span></div><div class="stack" aria-hidden="true"><i style="width:'+(cd/n*100)+'%;background:var(--ink)"></i><i style="width:'+(cb/n*100)+'%;background:var(--red)"></i></div>':'';
   const se=$('#ck-sum');if(se._h!==sh){se.innerHTML=sh;se._h=sh}
   const off=$('#ck-off');off.hidden=!R.unassigned.length;off.textContent=R.unassigned.length?'오늘 콜 없음(안 와도 돼요): '+R.unassigned.map(p=>disp(p.c)).join(', '):'';
-  $('#ck-lead').innerHTML=S.admin?'PD는 <b>모든 사람</b>의 도착을 체크할 수 있어요.':(mine?'도착하면 내 줄의 <b>도착 체크</b>를 눌러요.':'NOTICE에서 <b>내 코드를 넣으면</b> 체크 버튼이 생겨요.')+' 콜이 지났는데 체크가 없으면 빨갛게 바뀌어요.';
+  $('#ck-lead').innerHTML=S.admin?'PD는 <b>모든 사람</b>의 도착을 체크할 수 있어요.':(mine?'도착하면 내 줄의 <b>도착 체크</b>를 눌러요.':'NOTICE에서 <b>내 코드를 넣으면</b> 체크 버튼이 생겨요.')+' 콜이 지났는데 체크가 없으면 빨갛게 바뀌어요.'+(R.splits.length?' 외출하는 사람은 다시 오면 <b>복귀 체크</b>를 눌러요.':'');
 }
 
 /* ---------- ADMIN ---------- */
@@ -1278,7 +1334,9 @@ function renderAdmin(R){
   $('#adm-warn').hidden=true;$('#a-who').textContent=S.email?S.email+' 로그인':'';
   setVal($('#a-title'),sh.title);setVal($('#a-date'),sh.date);setVal($('#a-venue'),sh.venue);
   const bs=$('#a-buf');if(document.activeElement!==bs)bs.value=String(Number.isFinite(+sh.buffer)?+sh.buffer:15);
-  ['#a-title','#a-date','#a-venue','#a-buf','#a-ntext','#a-nsave','#a-addb','#a-addc','#a-sort','#a-ckreset','#a-new','#a-codes'].forEach(s=>{$(s).disabled=dis});
+  const ss=$('#a-split');if(document.activeElement!==ss)ss.value=String(R.splitGap);
+  const rs=$('#a-ret');if(document.activeElement!==rs)rs.value=String(R.retBuf);rs.closest('.fld').style.opacity=R.splitGap>0?'':'.5';
+  ['#a-title','#a-date','#a-venue','#a-buf','#a-split','#a-ret','#a-ntext','#a-nsave','#a-addb','#a-addc','#a-sort','#a-ckreset','#a-new','#a-codes'].forEach(s=>{$(s).disabled=dis});
   const nt=$('#a-ntext');if(!noticeDirty)setVal(nt,sh.notice||'');
   $('#a-ncount').textContent=(nt.value.length)+'자'+(noticeDirty?' · 아직 말하지 않은 변경':(sh.noticeAt?' · '+fmtStamp(sh.noticeAt)+'에 말함':''));
   const url=pdfUrl();const pc=$('#a-pdf');let ph;
@@ -1323,17 +1381,18 @@ function patchBlock(el,b,crew,dis){
 }
 function buildCrew(c){
   const el=document.createElement('div');el.className='crow';const id=esc(c.id);
-  el.innerHTML='<input type="text" class="role" data-f="role" id="ac-r-'+id+'" placeholder="역할" aria-label="역할" autocomplete="off"><input type="text" data-f="name" id="ac-n-'+id+'" placeholder="이름 (기본값)" aria-label="이름" autocomplete="off"><select data-f="group" id="ac-g-'+id+'" aria-label="구분"><option>밴드</option><option>스태프</option><option>모델</option><option>게스트</option></select><input type="time" data-f="availFrom" id="ac-f-'+id+'" aria-label="가능 시작"><input type="time" data-f="availTo" id="ac-t-'+id+'" aria-label="가능 끝"><button type="button" class="x del" data-act="del">삭제</button><div class="cst"></div><div class="cst ccode"></div>';
+  el.innerHTML='<input type="text" class="role" data-f="role" id="ac-r-'+id+'" placeholder="역할" aria-label="역할" autocomplete="off"><input type="text" data-f="name" id="ac-n-'+id+'" placeholder="이름 (기본값)" aria-label="이름" autocomplete="off"><select data-f="group" id="ac-g-'+id+'" aria-label="구분"><option>밴드</option><option>스태프</option><option>모델</option><option>게스트</option></select><input type="time" data-f="availFrom" id="ac-f-'+id+'" aria-label="가능 시작"><input type="time" data-f="availTo" id="ac-t-'+id+'" aria-label="가능 끝"><button type="button" class="x del" data-act="del">삭제</button><div class="cst-wrap"><label class="nsp" for="ac-s-'+id+'"><input type="checkbox" data-f="noSplit" id="ac-s-'+id+'"> 외출 안 함</label><div class="cst"></div></div><div class="cst ccode"></div>';
   return el;
 }
 function patchCrew(el,c,R,dis){
   setVal(el.querySelector('[data-f="role"]'),c.role);setVal(el.querySelector('[data-f="name"]'),c.pdName);
   const g=el.querySelector('[data-f="group"]');if(document.activeElement!==g){if(![...g.options].some(o=>o.value===c.group)&&c.group){const o=document.createElement('option');o.textContent=c.group;g.appendChild(o)}g.value=c.group||'스태프'}
   setVal(el.querySelector('[data-f="availFrom"]'),c.pdFrom);setVal(el.querySelector('[data-f="availTo"]'),c.pdTo);
+  const ns=el.querySelector('[data-f="noSplit"]');if(ns&&document.activeElement!==ns)ns.checked=!!c.noSplit;
   el.querySelectorAll('input,select,button').forEach(x=>{x.disabled=dis});
   const p=R.byId[c.id];const s=c.self;
   const linked=s?'<span class="ctag on">LINKED</span> 본인 입력: '+esc(((s.name||'').trim()||'이름 없음')+(avail(s)?' · 가능 '+avail(s):''))+' · 본인 값이 우선':'<span class="ctag">NOT LINKED</span> 아직 코드를 안 넣었어요. 여기 이름·가능 시간은 기본값이에요';
-  const call=p&&p.call!=null?'콜 '+fmt(p.call)+' · 퇴근 '+fmt(p.out):'오늘 콜 없음';
+  const call=p&&p.call!=null?'콜 '+fmt(p.call)+(p.split?' · '+splitText(p):'')+' · 퇴근 '+fmt(p.out):'오늘 콜 없음';
   const cf=p&&(p.early||p.late)?'<span class="hi">'+esc(conflictText(p))+'</span>':'';
   const h=linked+'<span>'+call+'</span>'+cf;
   const cs=el.querySelector('.cst');if(cs._h!==h){cs.innerHTML=h;cs._h=h}
@@ -1450,7 +1509,7 @@ meBox.addEventListener('change',e=>{
 
 /* ---------- events: CALL / CHECK-IN ---------- */
 $('#cmp').addEventListener('change',()=>{$('#matrix')._h='';render()});
-$('#matrix').addEventListener('click',e=>{const sg=e.target.closest('.seg');const info=$('#mx-info');if(!sg||!info)return;
+$('#matrix').addEventListener('click',e=>{const sg=e.target.closest('.seg,.away');const info=$('#mx-info');if(!sg||!info)return;
   $$('#matrix .seg.on').forEach(x=>x.classList.remove('on'));sg.classList.add('on');info.textContent=sg.dataset.full||sg.title||'';info.classList.add('on')});
 $('#copy').addEventListener('click',()=>{
   const pre=$('#sheet-pre');const txt=pre.textContent;
@@ -1458,14 +1517,14 @@ $('#copy').addEventListener('click',()=>{
   try{navigator.clipboard.writeText(txt).then(()=>toast('콜시트를 복사했어요. 단톡방에 붙여 넣으세요.'),fallback)}catch(err){fallback()}
 });
 $('#ck-list').addEventListener('click',e=>{
-  const b=e.target.closest('.ck-btn');if(!b)return;const cid=b.dataset.id;
-  const ck=S.checkins[cid];const mine=myCrew();const isMe=mine&&mine.id===cid;const at=nowMin();
+  const b=e.target.closest('.ck-btn');if(!b)return;const cid=b.dataset.id;const r=b.dataset.r==='2'?2:1;const k=ckKey(cid,r);
+  const ck=S.checkins[k];const mine=myCrew();const isMe=mine&&mine.id===cid;const at=nowMin();
   if(S.admin){
-    if(ck){delete S.checkins[cid];chain('ck/'+cid,()=>qRows(sb.from('checkins').delete().eq('crew_id',cid).select('crew_id')))}
-    else{S.checkins[cid]={at,by:'pd'};cueCheer();chain('ck/'+cid,()=>q(sb.from('checkins').upsert({crew_id:cid,at_min:at,by_who:'pd'})))}
+    if(ck){delete S.checkins[k];chain('ck/'+k,()=>qRows(sb.from('checkins').delete().eq('crew_id',cid).eq('round',r).select('crew_id')))}
+    else{S.checkins[k]={at,by:'pd'};cueCheer();chain('ck/'+k,()=>q(sb.from('checkins').upsert({crew_id:cid,round:r,at_min:at,by_who:'pd'},{onConflict:'crew_id,round'})))}
   }else if(isMe&&S.code){
-    if(ck)delete S.checkins[cid];else{S.checkins[cid]={at,by:'self'};cueCheer()}
-    chain('ck/'+cid,()=>q(sb.rpc('staff_checkin',{p_code:S.code,p_at:at,p_on:!ck})));
+    if(ck)delete S.checkins[k];else{S.checkins[k]={at,by:'self'};cueCheer()}
+    chain('ck/'+k,()=>q(sb.rpc('staff_checkin',{p_code:S.code,p_at:at,p_on:!ck,p_round:r})));
   }
   schedule();
 });
@@ -1478,6 +1537,8 @@ $('#a-title').addEventListener('input',e=>{showWrite({title:e.target.value,examp
 $('#a-venue').addEventListener('input',e=>{showWrite({venue:e.target.value,example:false});schedule()});
 $('#a-date').addEventListener('change',e=>{showWrite({date:e.target.value,example:false},0);schedule()});
 $('#a-buf').addEventListener('change',e=>{showWrite({buffer:+e.target.value},0);schedule()});
+$('#a-split').addEventListener('change',e=>{showWrite({splitGap:+e.target.value},0);schedule()});
+$('#a-ret').addEventListener('change',e=>{showWrite({returnBuf:+e.target.value},0);schedule()});
 $('#a-ntext').addEventListener('input',()=>{noticeDirty=true;schedule()});
 $('#a-nsave').addEventListener('click',()=>{
   const v=$('#a-ntext').value.trim();noticeDirty=false;
@@ -1548,7 +1609,9 @@ blist.addEventListener('click',e=>{
 const clist=$('#a-clist');
 function crewOf(el){const r=el.closest('.crow');return r?S.crewRaw.find(c=>c.id===r.dataset.k):null}
 clist.addEventListener('input',e=>{const f=e.target.dataset.f;if(f!=='role'&&f!=='name')return;const c=crewOf(e.target);if(!c)return;c[f]=e.target.value;merge();patch('crew/'+c.id,{[f]:c[f]});schedule()});
-clist.addEventListener('change',e=>{const f=e.target.dataset.f;if(f!=='group'&&f!=='availFrom'&&f!=='availTo')return;const c=crewOf(e.target);if(!c)return;c[f]=e.target.value;merge();patch('crew/'+c.id,{[f]:c[f]},0);schedule()});
+clist.addEventListener('change',e=>{const f=e.target.dataset.f;
+  if(f==='noSplit'){const c=crewOf(e.target);if(!c)return;c.noSplit=e.target.checked;merge();patch('crew/'+c.id,{noSplit:c.noSplit},0);schedule();return}
+  if(f!=='group'&&f!=='availFrom'&&f!=='availTo')return;const c=crewOf(e.target);if(!c)return;c[f]=e.target.value;merge();patch('crew/'+c.id,{[f]:c[f]},0);schedule()});
 clist.addEventListener('click',e=>{
   const c=crewOf(e.target);if(!c)return;const m=S.crew.find(x=>x.id===c.id)||c;
   if(e.target.closest('[data-act="copycode"]')){copyText(disp(m)+' — '+S.codes[c.id]+'\n'+location.origin+location.pathname,'코드를 복사했어요.');return}
@@ -1561,15 +1624,15 @@ clist.addEventListener('click',e=>{
     return;
   }
   if(e.target.closest('[data-act="del"]')){
-    const snap=clone(c);const code=S.codes[c.id];const ck=S.checkins[c.id];
+    const snap=clone(c);const code=S.codes[c.id];const cks={};[c.id,c.id+'#2'].forEach(k=>{if(S.checkins[k])cks[k]=S.checkins[k]});
     const affected=S.blocks.filter(b=>(b.crew||[]).includes(c.id)).map(b=>({id:b.id,crew:b.crew.slice()}));
-    S.crewRaw=S.crewRaw.filter(x=>x.id!==c.id);delete S.checkins[c.id];merge();dbDelete('crew',c.id);
+    S.crewRaw=S.crewRaw.filter(x=>x.id!==c.id);delete S.checkins[c.id];delete S.checkins[c.id+'#2'];merge();dbDelete('crew',c.id);
     affected.forEach(a=>{const b=S.blocks.find(x=>x.id===a.id);if(b){b.crew=a.crew.filter(x=>x!==c.id);patch('blocks/'+b.id,{crew:b.crew},0)}});
     schedule();
     toast('‘'+disp(m)+'’ 멤버를 지웠어요.',async()=>{
       S.crewRaw.push(snap);merge();const ok=await dbInsert('crew',snap);if(!ok)return;
       if(code)chain('codes/'+c.id,()=>q(sb.from('crew_codes').upsert({crew_id:c.id,code})));
-      if(ck)chain('ck/'+c.id,()=>q(sb.from('checkins').upsert({crew_id:c.id,at_min:ck.at,by_who:ck.by||'pd'})));
+      const ckr=ckRows(cks);if(ckr.length){Object.assign(S.checkins,cks);chain('ck/'+c.id,()=>q(sb.from('checkins').upsert(ckr,{onConflict:'crew_id,round'})))}
       affected.forEach(a=>{const b=S.blocks.find(x=>x.id===a.id);if(b){b.crew=a.crew;patch('blocks/'+b.id,{crew:a.crew},0)}});schedule();
     });
   }
@@ -1577,7 +1640,7 @@ clist.addEventListener('click',e=>{
 $('#a-ckreset').addEventListener('click',e=>arm(e.currentTarget,'한 번 더 누르면 초기화',()=>{
   const snap=Object.assign({},S.checkins);S.checkins={};
   chain('ck/all',()=>q(sb.from('checkins').delete().neq('crew_id','')));schedule();
-  toast('체크인 기록을 모두 지웠어요.',()=>{const rows=Object.keys(snap).map(id=>({crew_id:id,at_min:snap[id].at,by_who:snap[id].by||'pd'}));if(rows.length)chain('ck/all',()=>q(sb.from('checkins').upsert(rows)));S.checkins=snap;schedule()});
+  toast('체크인 기록을 모두 지웠어요.',()=>{const rows=ckRows(snap);if(rows.length)chain('ck/all',()=>q(sb.from('checkins').upsert(rows,{onConflict:'crew_id,round'})));S.checkins=snap;schedule()});
 }));
 $('#a-new').addEventListener('click',e=>arm(e.currentTarget,'한 번 더 누르면 새 공연',async()=>{
   const blocks=S.blocks.map(b=>clone(b));const cks=Object.assign({},S.checkins);const sh=Object.assign({},S.show||{});
@@ -1586,7 +1649,7 @@ $('#a-new').addEventListener('click',e=>arm(e.currentTarget,'한 번 더 누르�
   await showWrite({title:'',date:'',venue:'',notice:'',noticeAt:null,example:false},0);noticeDirty=false;schedule();
   toast('새 공연을 시작했어요. 멤버와 코드는 그대로예요.',()=>{
     if(blocks.length)chain('blocks/all',()=>q(sb.from('blocks').insert(blocks.map(b=>Object.assign({id:b.id},toDb('blocks',stripId(b)))))));
-    const rows=Object.keys(cks).map(id=>({crew_id:id,at_min:cks[id].at,by_who:cks[id].by||'pd'}));if(rows.length)chain('ck/all',()=>q(sb.from('checkins').upsert(rows)));
+    const rows=ckRows(cks);if(rows.length)chain('ck/all',()=>q(sb.from('checkins').upsert(rows,{onConflict:'crew_id,round'})));
     showWrite({title:sh.title||'',date:sh.date||'',venue:sh.venue||'',notice:sh.notice||'',noticeAt:sh.noticeAt||null},0);
   });
 }));
