@@ -1257,7 +1257,7 @@ function renderCheck(R){
     const ck=S.checkins[p.c.id];const at=ck?ck.at:null;let st,txt;
     if(ck){st='done';cd++;const late=at-p.call;txt='도착 '+fmt(at)+(late>0?' · '+late+'분 늦음':'')}
     else if(now>p.call){st='blocked';cb++;txt='미도착 · '+dur(now-p.call)+' 지남'}
-    else{st='pending';cp++;const d=p.call-now;txt=d===0?'지금 콜':d<=180?dur(d)+' 뒤 콜':'대기 중'}
+    else{st='pending';cp++;const d=p.call-now;txt=d===0?'지금 콜':dur(d)+' 뒤 콜'}
     const isMe=mine&&mine.id===p.c.id;const can=S.admin||isMe;
     const btn=can?(ck?'<button type="button" class="ck-btn undo" data-id="'+esc(p.c.id)+'">도착 취소</button>':'<button type="button" class="ck-btn" data-id="'+esc(p.c.id)+'">도착 체크</button>'):'<span class="ck-none" aria-hidden="true"></span>';
     return '<li class="ck'+(isMe?' mine':'')+'"><div class="ck-time">'+fmt(p.call)+'<small>CALL</small></div><div class="ck-who"><b>'+esc(disp(p.c))+(isMe?' <span class="mine-chip">ME</span>':'')+'</b><span>'+esc(p.first.label||'일정')+'부터 · '+fmt(p.out)+' 퇴근</span></div><span class="chip '+st+'">'+esc(txt)+'</span>'+btn+'</li>';
@@ -1265,7 +1265,7 @@ function renderCheck(R){
   const lh=!live()?'<li class="ck"><div class="ck-time">··:··</div><div class="ck-who"><b>'+(S.mode==='error'?'연결이 안 돼요':'불러오는 중이에요')+'</b></div></li>':(rows||emptyHTML('콜이 잡힌 사람이 없어요.','PD가 큐시트에서 일정마다 사람을 고르면 여기서 도착을 체크해요.'));
   const el=$('#ck-list');if(el._h!==lh){el.innerHTML=lh;el._h=lh}
   const n=R.assigned.length||1;
-  const sh=R.assigned.length?'<div class="ck-sum"><span class="n"><span class="chip done">도착</span><b>'+cd+'</b></span><span class="n"><span class="chip pending">대기</span><b>'+cp+'</b></span><span class="n"><span class="chip blocked">미도착</span><b>'+cb+'</b></span></div><div class="stack" aria-hidden="true"><i style="width:'+(cd/n*100)+'%;background:var(--ink)"></i><i style="width:'+(cb/n*100)+'%;background:var(--red)"></i></div>':'';
+  const sh=R.assigned.length?'<div class="ck-sum"><span class="n"><span class="chip done">도착</span><b>'+cd+'</b></span><span class="n"><span class="chip pending">콜 전</span><b>'+cp+'</b></span><span class="n"><span class="chip blocked">미도착</span><b>'+cb+'</b></span></div><div class="stack" aria-hidden="true"><i style="width:'+(cd/n*100)+'%;background:var(--ink)"></i><i style="width:'+(cb/n*100)+'%;background:var(--red)"></i></div>':'';
   const se=$('#ck-sum');if(se._h!==sh){se.innerHTML=sh;se._h=sh}
   const off=$('#ck-off');off.hidden=!R.unassigned.length;off.textContent=R.unassigned.length?'오늘 콜 없음(안 와도 돼요): '+R.unassigned.map(p=>disp(p.c)).join(', '):'';
   $('#ck-lead').innerHTML=S.admin?'PD는 <b>모든 사람</b>의 도착을 체크할 수 있어요.':(mine?'도착하면 내 줄의 <b>도착 체크</b>를 눌러요.':'NOTICE에서 <b>내 코드를 넣으면</b> 체크 버튼이 생겨요.')+' 콜이 지났는데 체크가 없으면 빨갛게 바뀌어요.';
