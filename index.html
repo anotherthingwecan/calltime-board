@@ -1005,7 +1005,7 @@ function renderTicket(R){
     h+='<p class="t-time">'+fmt(p.call)+'</p><p class="t-who">'+esc(disp(mine))+'</p><p class="t-sub">'+esc(p.first.label||'일정')+'부터 · '+fmt(p.out)+' 퇴근 · 대기 '+dur(p.wait)+'</p>';
     if(p.early||p.late)h+='<p class="t-warn">'+esc(conflictText(p))+'. PD 화면에도 표시돼요.</p>';
   }
-  h+='<div class="perf" aria-hidden="true"></div><div class="t-foot"><span class="label">Buffer '+R.buf+' min</span><span class="label">'+esc(date||'Call time board')+'</span></div>';
+  h+='<div class="perf" aria-hidden="true"></div><div class="t-foot"><span class="label">'+(R.buf?'Buffer '+R.buf+' min':'Call = first cue')+'</span><span class="label">'+esc(date||'Call time board')+'</span></div>';
   const el=$('#ticket');if(el._h!==h){el.innerHTML=h;el._h=h}
 }
 let meKey='';
@@ -1149,7 +1149,7 @@ function emptyHTML(t,s){return '<li class="empty"><div class="fig-s" aria-hidden
 
 /* ---------- CALL ---------- */
 function renderCall(R){
-  $('#call-lead').innerHTML='콜 = <b>첫 일정 '+R.buf+'분 전</b>. 마지막 일정이 끝나면 퇴근이에요.';
+  $('#call-lead').innerHTML='콜 = <b>'+(R.buf?'첫 일정 '+R.buf+'분 전':'첫 일정 시작 시각')+'</b>. 마지막 일정이 끝나면 퇴근이에요.';
   const key=$('#key');let kh;
   if(!R.assigned.length){kh='<div><p class="label">Wait time saved</p><p class="key-num">—</p><p class="hint">큐시트에 일정과 사람을 넣으면 계산돼요.</p></div><div></div>'}
   else{
@@ -1206,7 +1206,7 @@ function sheetText(R){
   const sh=S.show||{};const out=[];
   out.push('['+((sh.title||'').trim()||'공연')+' · 콜시트]');
   const line=[fmtDate(sh.date),(sh.venue||'').trim()].filter(Boolean).join(' · ');if(line)out.push(line);
-  out.push('※ 콜 = 첫 일정 '+R.buf+'분 전 도착');out.push('');
+  out.push(R.buf?'※ 콜 = 첫 일정 '+R.buf+'분 전 도착':'※ 콜 = 첫 일정 시작 시각에 도착');out.push('');
   if(!R.assigned.length)out.push('아직 콜이 없어요.');
   R.assigned.forEach(p=>out.push(fmt(p.call)+'  '+disp(p.c)+' — '+(p.first.label||'일정')+'부터 · '+fmt(p.out)+' 퇴근'));
   if(R.unassigned.length){out.push('');out.push('오늘 콜 없음: '+R.unassigned.map(p=>disp(p.c)).join(', '))}
